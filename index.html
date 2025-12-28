@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2P Master Pro - Cloud Engine</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React y Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#0b0e11]">
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        // Importación de Firebase desde CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        // --- CONFIGURACIÓN DE FIREBASE ---
+        // DEBES REEMPLAZAR ESTOS VALORES CON LOS DE TU CONSOLA DE FIREBASE
+        // Ve a: Project Settings -> General -> Your Apps -> Firebase SDK snippet -> Config
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO_ID",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Verificación de llaves configuradas
+        const isConfigured = firebaseConfig.apiKey !== "TU_API_KEY";
+
+        let app, auth, db;
+        if (isConfigured) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        }
+
+        const appId = "p2p-master-live-v1";
+
+        // Iconos SVG
+        const IconTrending = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>;
+        const IconRefresh = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>;
+        const IconPlus = ({ size = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
+        const IconAlert = () => <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f0b90b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>;
+
+        function App() {
+            const [user, setUser] = React.useState(null);
+            const [loading, setLoading] = React.useState(isConfigured);
+            const [view, setView] = React.useState('dashboard');
+            const [state, setState] = React.useState({
+                inv: { usdt: 0, fiat_usd: 0, rates: { usd: 45.50 } },
+                history: []
+            });
+            const [auditLogs, setAuditLogs] = React.useState([]);
+            const [currentMode, setCurrentMode] = React.useState('buy');
+            const [form, setForm] = React.useState({ method: 'Pago Móvil', ref: '', amount: '', rate: '' });
+
+            // Pantalla de error si no hay API Key
+            if (!isConfigured) {
+                return (
+                    <div className="flex flex-col items-center justify-center h-screen text-white p-6 text-center">
+                        <IconAlert />
+                        <h1 className="text-xl font-bold mt-4 uppercase text-yellow-500">Configuración Pendiente</h1>
+                        <p className="text-gray-400 mt-2 max-w-md text-sm">
+                            Debes editar el archivo <code className="bg-gray-800 px-1 rounded">index.html</code> y reemplazar los valores en <code className="bg-gray-800 px-1 rounded">firebaseConfig</code> con las credenciales de tu consola de Firebase para que la nube funcione.
+                        </p>
+                    </div>
+                );
+            }
+
+            React.useEffect(() => {
+                if (!auth) return;
+                const unsubAuth = onAuthStateChanged(auth, (u) => {
+                    if (!u) {
+                        signInAnonymously(auth).catch(err => {
+                            console.error("Error de autenticación:", err);
+                        });
+                    } else {
+                        setUser(u);
+                        setLoading(false);
+                    }
+                });
+                return () => unsubAuth();
+            }, []);
+
+            React.useEffect(() => {
+                if (!user || !db) return;
+                const stateRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'main');
+                const auditColRef = collection(db, 'artifacts', appId, 'public', 'data', 'auditLogs');
+
+                const unsubState = onSnapshot(stateRef, (snap) => {
+                    if (snap.exists()) setState(snap.data());
+                    else setDoc(stateRef, state);
+                }, (err) => console.error("Error de Lectura Estado:", err));
+
+                const unsubAudit = onSnapshot(auditColRef, (snap) => {
+                    const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAuditLogs(logs.sort((a, b) => b.timestamp - a.timestamp).slice(0, 50));
+                }, (err) => console.error("Error de Lectura Auditoría:", err));
+
+                return () => { unsubState(); unsubAudit(); };
+            }, [user]);
+
+            const executeOrder = async () => {
+                const amount = parseFloat(form.amount);
+                const rate = parseFloat(form.rate);
+                if (!amount || !rate || !db) return;
+
+                const usdt = amount / rate;
+                const newOrder = {
+                    id: Date.now(),
+                    date: new Date().toLocaleString(),
+                    type: currentMode,
+                    method: form.method,
+                    ref: form.ref || '---',
+                    local: amount,
+                    rate,
+                    usdt
+                };
+
+                const newState = {
+                    ...state,
+                    inv: {
+                        ...state.inv,
+                        usdt: state.inv.usdt + (currentMode === 'buy' ? usdt : -usdt),
+                        fiat_usd: state.inv.fiat_usd + (currentMode === 'buy' ? -(amount / 45) : (amount / 45))
+                    },
+                    history: [newOrder, ...state.history].slice(0, 50)
+                };
+
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'main'), newState);
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'auditLogs'), {
+                        action: `ORDEN ${currentMode.toUpperCase()}`,
+                        details: `${usdt.toFixed(2)} USDT @ ${rate}`,
+                        timestamp: Date.now(),
+                        userId: user.uid
+                    });
+                    setForm({ ...form, amount: '', ref: '' });
+                } catch (e) {
+                    console.error("Error al guardar:", e);
+                }
+            };
+
+            if (loading) return (
+                <div className="flex flex-col items-center justify-center h-screen text-white">
+                    <IconRefresh className="animate-spin text-yellow-500 mb-4" />
+                    <p className="font-bold uppercase tracking-widest text-xs">Conectando con Firebase...</p>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen text-gray-200 p-4 font-sans max-w-6xl mx-auto">
+                    <nav className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+                        <div className="flex items-center gap-2">
+                            <IconTrending />
+                            <span className="font-bold text-xl uppercase tracking-tighter">P2P Master <span className="text-yellow-500">Cloud</span></span>
+                        </div>
+                        <div className="flex gap-4">
+                            <button onClick={() => setView('dashboard')} className={`text-xs font-bold uppercase transition ${view === 'dashboard' ? 'text-yellow-500' : 'hover:text-white'}`}>Panel</button>
+                            <button onClick={() => setView('audit')} className={`text-xs font-bold uppercase transition ${view === 'audit' ? 'text-yellow-500' : 'hover:text-white'}`}>Auditoría</button>
+                        </div>
+                    </nav>
+
+                    {view === 'dashboard' ? (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-[#1e2329] p-6 rounded-xl border border-gray-800">
+                                        <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo Bancos (Est.)</p>
+                                        <p className="text-2xl font-bold">${state.inv.fiat_usd.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                                    </div>
+                                    <div className="bg-[#1e2329] p-6 rounded-xl border border-gray-800">
+                                        <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo USDT</p>
+                                        <p className="text-2xl font-bold text-green-500">{state.inv.usdt.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-[#1e2329] rounded-xl border border-gray-800 overflow-hidden">
+                                    <div className="p-3 bg-[#2b3139] text-[10px] font-bold uppercase text-gray-400">Últimos Movimientos</div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-xs">
+                                            <thead>
+                                                <tr className="text-gray-500 border-b border-gray-800 font-bold">
+                                                    <th className="p-3">Operación</th>
+                                                    <th className="p-3 text-right">Monto Bs</th>
+                                                    <th className="p-3 text-right">USDT</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {state.history.length === 0 ? (
+                                                    <tr><td colSpan="3" className="p-10 text-center text-gray-600 italic">No hay registros</td></tr>
+                                                ) : (
+                                                    state.history.map(h => (
+                                                        <tr key={h.id} className="border-t border-gray-800 hover:bg-gray-800/30 transition">
+                                                            <td className="p-3">
+                                                                <span className={h.type === 'buy' ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>{h.type.toUpperCase()}</span>
+                                                                <span className="block text-[10px] text-gray-500">{h.method}</span>
+                                                            </td>
+                                                            <td className="p-3 text-right font-mono">{h.local.toLocaleString()}</td>
+                                                            <td className="p-3 text-right font-bold text-yellow-500 font-mono">{h.usdt.toFixed(2)}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="bg-[#1e2329] p-6 rounded-xl border border-gray-800 shadow-xl">
+                                    <h3 className="text-sm font-bold uppercase mb-4 flex items-center gap-2"><IconPlus /> Nueva Orden</h3>
+                                    <div className="flex bg-black p-1 rounded-lg mb-4">
+                                        <button onClick={() => setCurrentMode('buy')} className={`flex-1 py-2 text-[10px] font-bold rounded transition ${currentMode === 'buy' ? 'bg-green-600 text-white' : 'text-gray-500'}`}>COMPRA</button>
+                                        <button onClick={() => setCurrentMode('sell')} className={`flex-1 py-2 text-[10px] font-bold rounded transition ${currentMode === 'sell' ? 'bg-red-600 text-white' : 'text-gray-500'}`}>VENTA</button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] text-gray-500 uppercase font-bold ml-1">Monto en Bolívares</label>
+                                            <input type="number" className="w-full bg-gray-800 p-3 rounded border border-gray-700 outline-none focus:border-yellow-500 text-sm font-mono text-white" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0.00" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[9px] text-gray-500 uppercase font-bold ml-1">Tasa de Cambio</label>
+                                            <input type="number" className="w-full bg-gray-800 p-3 rounded border border-gray-700 outline-none focus:border-yellow-500 text-sm font-mono text-white" value={form.rate} onChange={e => setForm({...form, rate: e.target.value})} placeholder="0.00" />
+                                        </div>
+                                        <button onClick={executeOrder} className="w-full bg-yellow-500 text-black py-4 rounded font-black uppercase text-xs hover:bg-yellow-400 transition active:scale-95 shadow-lg shadow-yellow-500/10">Procesar Orden</button>
+                                    </div>
+                                </div>
+                                <div className="bg-[#1e2329] p-4 rounded-xl border border-gray-800">
+                                    <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Terminal Cloud ID</p>
+                                    <p className="text-[9px] font-mono text-gray-400 break-all bg-black/30 p-2 rounded">{user ? user.uid : '---'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-[#1e2329] rounded-xl border border-gray-800 overflow-hidden shadow-2xl">
+                            <div className="p-4 bg-[#2b3139] border-b border-gray-800 font-bold uppercase text-xs">Registros de Actividad (Auditoría)</div>
+                            <div className="divide-y divide-gray-800">
+                                {auditLogs.length === 0 ? (
+                                    <div className="p-10 text-center text-gray-600 uppercase text-[10px] font-bold">No hay logs disponibles</div>
+                                ) : (
+                                    auditLogs.map(log => (
+                                        <div key={log.id} className="p-4 flex justify-between items-center text-xs hover:bg-gray-800/20 transition border-l-2 border-transparent hover:border-yellow-500">
+                                            <div>
+                                                <p className="font-bold text-yellow-500 tracking-wider uppercase text-[10px]">{log.action}</p>
+                                                <p className="text-gray-400 mt-1">{log.details}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[10px] text-gray-500 block font-bold">{new Date(log.timestamp).toLocaleDateString()}</span>
+                                                <span className="text-[10px] text-gray-600 block font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
