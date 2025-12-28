@@ -3,17 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Master Pro - Cloud Engine Full</title>
+    <title>P2P Master Pro - Terminal con Gestión de Socios</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React y Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0b0e11; }
-        .glass { background: rgba(30, 35, 41, 0.7); backdrop-filter: blur(10px); }
-        .binance-input { background-color: #2b3139; border: 1px solid #474d57; color: white; transition: all 0.2s; }
-        .binance-input:focus { border-color: #f0b90b; outline: none; }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #080a0c; 
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        .card-pro {
+            background: #111418;
+            border: 1px solid #1e2329;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .card-pro:hover {
+            border-color: #2b3139;
+        }
+
+        .input-pro {
+            background: #1e2329;
+            border: 1px solid #2b3139;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .input-pro:focus {
+            border-color: #f0b90b;
+            outline: none;
+            background: #2b3139;
+        }
+
+        .btn-buy { background: #2ebd85; color: white; }
+        .btn-sell { background: #f6465d; color: white; }
+        
+        .stat-label { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #474d57; letter-spacing: 0.05em; }
+        .nav-link { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; transition: all 0.2s; }
+        
+        /* Custom Table */
+        .table-pro th { font-size: 10px; text-transform: uppercase; color: #474d57; padding: 12px; border-bottom: 1px solid #1e2329; }
+        .table-pro td { padding: 12px; border-bottom: 1px solid #1e2329; }
     </style>
 </head>
 <body>
@@ -21,7 +65,7 @@
 
     <script type="text/babel" data-type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, doc, collection, onSnapshot, setDoc, addDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = {
@@ -37,27 +81,30 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = "p2p-master-full-v1";
+        const appId = "p2p-master-partners-v1";
 
-        // Componentes de Iconos
-        const IconWallet = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>;
-        const IconChart = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>;
-        const IconHistory = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>;
+        const Icons = {
+            Wallet: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><circle cx="18" cy="14" r="2"/></svg>,
+            Swap: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>,
+            Users: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Chart: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16V8"/><path d="M12 16V12"/><path d="M17 16V10"/></svg>,
+            Plus: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        };
 
         function App() {
             const [user, setUser] = React.useState(null);
             const [loading, setLoading] = React.useState(true);
             const [view, setView] = React.useState('dashboard');
             
-            // Estado principal recuperado de la nube
-            const [data, setData] = React.useState({
-                balance: { usdt: 0, fiat: 0, capital_invested: 0 },
-                rates: { buy: 0, sell: 0, ref: 45.50 },
-                history: []
+            const [store, setStore] = React.useState({
+                capital: { fiat: 0, usdt: 0 },
+                config: { refRate: 45.50 },
+                history: [],
+                partners: [] // { id, name, capital }
             });
 
-            // Estado local del formulario
-            const [form, setForm] = React.useState({ type: 'buy', amount: '', rate: '', method: 'Pago Móvil' });
+            const [order, setOrder] = React.useState({ side: 'buy', amount: '', rate: '', method: 'Pago Móvil' });
+            const [newPartner, setNewPartner] = React.useState({ name: '', capital: '' });
 
             React.useEffect(() => {
                 const unsubAuth = onAuthStateChanged(auth, async (u) => {
@@ -69,194 +116,262 @@
 
             React.useEffect(() => {
                 if (!user) return;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main');
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'store', 'main');
                 const unsub = onSnapshot(docRef, (snap) => {
-                    if (snap.exists()) setData(snap.data());
-                    else setDoc(docRef, data);
-                });
+                    if (snap.exists()) setStore(snap.data());
+                    else setDoc(docRef, store);
+                }, (err) => console.error("Firestore Error:", err));
                 return () => unsub();
             }, [user]);
 
-            const handleTransaction = async () => {
-                const amount = parseFloat(form.amount);
-                const rate = parseFloat(form.rate);
-                if (!amount || !rate) return;
-
-                const usdt_equiv = amount / rate;
-                const newHistory = [{
-                    id: Date.now(),
-                    type: form.type,
-                    amount,
-                    rate,
-                    usdt: usdt_equiv,
-                    date: new Date().toISOString(),
-                    method: form.method
-                }, ...data.history].slice(0, 100);
-
-                const newBalance = { ...data.balance };
-                if (form.type === 'buy') {
-                    newBalance.usdt += usdt_equiv;
-                    newBalance.fiat -= amount;
-                } else {
-                    newBalance.usdt -= usdt_equiv;
-                    newBalance.fiat += amount;
-                }
-
-                const updatedData = { ...data, balance: newBalance, history: newHistory };
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main'), updatedData);
-                
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'logs'), {
-                    user: user.uid,
-                    action: `ORDER_${form.type.toUpperCase()}`,
-                    val: amount,
-                    timestamp: Date.now()
-                });
-
-                setForm({ ...form, amount: '', rate: '' });
+            const updateCloud = async (newData) => {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'store', 'main'), newData);
             };
 
-            const stats = React.useMemo(() => {
-                const buys = data.history.filter(h => h.type === 'buy');
-                const sells = data.history.filter(h => h.type === 'sell');
-                const avgBuy = buys.length ? buys.reduce((a, b) => a + b.rate, 0) / buys.length : 0;
-                const totalVol = data.history.reduce((a, b) => a + b.amount, 0);
-                return { avgBuy, totalVol, count: data.history.length };
-            }, [data.history]);
+            const handleExecute = async () => {
+                const amount = parseFloat(order.amount);
+                const rate = parseFloat(order.rate);
+                if (!amount || !rate) return;
 
-            if (loading) return (
-                <div className="h-screen flex items-center justify-center text-yellow-500 font-bold animate-pulse uppercase tracking-widest">
-                    Cargando Terminal Cloud...
-                </div>
-            );
+                const usdtValue = amount / rate;
+                const newHistory = [{
+                    id: Date.now(),
+                    side: order.side,
+                    amount,
+                    rate,
+                    usdt: usdtValue,
+                    timestamp: Date.now()
+                }, ...store.history].slice(0, 50);
+
+                const newCapital = { ...store.capital };
+                if (order.side === 'buy') {
+                    newCapital.usdt += usdtValue;
+                    newCapital.fiat -= amount;
+                } else {
+                    newCapital.usdt -= usdtValue;
+                    newCapital.fiat += amount;
+                }
+
+                await updateCloud({ ...store, capital: newCapital, history: newHistory });
+                setOrder({ ...order, amount: '', rate: '' });
+            };
+
+            const addPartner = async () => {
+                if (!newPartner.name || !newPartner.capital) return;
+                const partnerObj = {
+                    id: Date.now(),
+                    name: newPartner.name,
+                    initialCapital: parseFloat(newPartner.capital)
+                };
+                const updatedPartners = [...store.partners, partnerObj];
+                const updatedFiat = store.capital.fiat + parseFloat(newPartner.capital);
+                
+                await updateCloud({ 
+                    ...store, 
+                    partners: updatedPartners,
+                    capital: { ...store.capital, fiat: updatedFiat }
+                });
+                setNewPartner({ name: '', capital: '' });
+            };
+
+            const deletePartner = async (id) => {
+                const p = store.partners.find(x => x.id === id);
+                if(!p) return;
+                const updatedPartners = store.partners.filter(p => p.id !== id);
+                const updatedFiat = store.capital.fiat - p.initialCapital;
+                await updateCloud({ ...store, partners: updatedPartners, capital: { ...store.capital, fiat: updatedFiat } });
+            };
+
+            // Cálculos
+            const totalPartnerCapital = store.partners.reduce((a, b) => a + b.initialCapital, 0);
+            const currentTotalValue = store.capital.fiat + (store.capital.usdt * store.config.refRate);
+
+            if (loading) return <div className="h-screen flex items-center justify-center text-yellow-500 mono">CONECTANDO TERMINAL...</div>;
 
             return (
-                <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8">
-                    {/* Header Estilo Binance */}
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                        <div>
-                            <h1 className="text-2xl font-black text-white tracking-tighter uppercase">P2P Master <span className="text-yellow-500 underline">Pro</span></h1>
-                            <p className="text-[10px] text-gray-500 font-mono tracking-widest uppercase">Cloud Engine Active • ID: {user?.uid.slice(0,8)}</p>
+                <div className="p-4 md:p-8 max-w-7xl mx-auto">
+                    <nav className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6 border-b border-gray-800/50 pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="bg-yellow-500 p-2 rounded-lg text-black"><Icons.Chart /></div>
+                            <div>
+                                <h1 className="text-xl font-extrabold uppercase tracking-tighter text-white">P2P Master <span className="text-yellow-500">Pro</span></h1>
+                                <p className="mono text-[9px] text-gray-500 uppercase mt-1">SOCIOS & ARBITRAJE CLOUD</p>
+                            </div>
                         </div>
-                        <div className="flex bg-[#1e2329] p-1 rounded-lg border border-gray-800">
-                            <button onClick={() => setView('dashboard')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase transition ${view === 'dashboard' ? 'bg-[#2b3139] text-yellow-500 shadow-sm' : 'text-gray-500 hover:text-white'}`}>Mercado</button>
-                            <button onClick={() => setView('history')} className={`px-4 py-2 rounded-md text-xs font-bold uppercase transition ${view === 'history' ? 'bg-[#2b3139] text-yellow-500 shadow-sm' : 'text-gray-500 hover:text-white'}`}>Historial</button>
+
+                        <div className="flex bg-[#111418] p-1 rounded-xl border border-gray-800 overflow-x-auto max-w-full">
+                            {[
+                                { id: 'dashboard', label: 'Terminal', icon: <Icons.Swap /> },
+                                { id: 'partners', label: 'Socios', icon: <Icons.Users /> },
+                                { id: 'history', label: 'Libro', icon: <Icons.Wallet /> }
+                            ].map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => setView(item.id)}
+                                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg nav-link whitespace-nowrap transition-all ${view === item.id ? 'bg-yellow-500 text-black' : 'text-gray-500 hover:text-white'}`}
+                                >
+                                    {item.icon} <span>{item.label}</span>
+                                </button>
+                            ))}
                         </div>
-                    </header>
+                    </nav>
 
                     {view === 'dashboard' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                            {/* Panel Izquierdo: Wallet e Inventario */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                             <div className="lg:col-span-8 space-y-6">
-                                {/* Wallet Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="glass p-5 rounded-2xl border border-gray-800 relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 p-3 opacity-10 text-yellow-500"><IconWallet /></div>
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Inventario USDT</p>
-                                        <p className="text-3xl font-black text-white">{data.balance.usdt.toFixed(2)}</p>
-                                        <p className="text-[10px] text-green-500 font-bold mt-2">≈ {(data.balance.usdt * data.rates.ref).toFixed(2)} Bs</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-white">
+                                    <div className="card-pro p-6">
+                                        <span className="stat-label">Inventario USDT</span>
+                                        <p className="text-3xl font-black mono mt-2">{store.capital.usdt.toFixed(2)}</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase mt-1">En Cripto</p>
                                     </div>
-                                    <div className="glass p-5 rounded-2xl border border-gray-800">
-                                        <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">Capital en Banco</p>
-                                        <p className="text-3xl font-black text-white">{data.balance.fiat.toLocaleString()} <span className="text-sm text-gray-600">Bs</span></p>
-                                        <p className="text-[10px] text-gray-500 font-bold mt-2">Capital de Trabajo</p>
+                                    <div className="card-pro p-6">
+                                        <span className="stat-label">Saldo Bolívar</span>
+                                        <p className="text-3xl font-black mono mt-2">{store.capital.fiat.toLocaleString()}</p>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase mt-1">En Banco</p>
                                     </div>
-                                    <div className="glass p-5 rounded-2xl border border-gray-800 bg-yellow-500/5 border-yellow-500/20">
-                                        <p className="text-[10px] font-bold text-yellow-500 uppercase mb-1">Precio Compra Prom.</p>
-                                        <p className="text-3xl font-black text-white">{stats.avgBuy.toFixed(2)}</p>
-                                        <p className="text-[10px] text-gray-500 font-bold mt-2">Margen Ref: {data.rates.ref}</p>
+                                    <div className="card-pro p-6 border-l-4 border-yellow-500">
+                                        <span className="stat-label">Valor Total</span>
+                                        <p className="text-3xl font-black mono mt-2">{currentTotalValue.toLocaleString()}</p>
+                                        <p className="text-[10px] text-yellow-500 font-bold uppercase mt-1">Ref: {store.config.refRate}</p>
                                     </div>
                                 </div>
 
-                                {/* Secciones de Operaciones */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="glass p-6 rounded-2xl border border-gray-800">
+                                    <div className="card-pro p-8">
                                         <div className="flex justify-between items-center mb-6">
-                                            <h2 className="font-black uppercase text-sm tracking-widest">Panel de Ejecución</h2>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => setForm({...form, type: 'buy'})} className={`px-3 py-1 rounded text-[10px] font-bold ${form.type === 'buy' ? 'bg-green-600' : 'bg-gray-800 text-gray-500'}`}>COMPRA</button>
-                                                <button onClick={() => setForm({...form, type: 'sell'})} className={`px-3 py-1 rounded text-[10px] font-bold ${form.type === 'sell' ? 'bg-red-600' : 'bg-gray-800 text-gray-500'}`}>VENTA</button>
+                                            <h3 className="font-black text-xs uppercase tracking-widest">Nueva Orden</h3>
+                                            <div className="flex bg-black/40 p-1 rounded-lg">
+                                                <button onClick={() => setOrder({...order, side:'buy'})} className={`px-4 py-1 rounded text-[10px] font-black uppercase ${order.side==='buy'?'bg-green-600':'text-gray-600'}`}>Compra</button>
+                                                <button onClick={() => setOrder({...order, side:'sell'})} className={`px-4 py-1 rounded text-[10px] font-black uppercase ${order.side==='sell'?'bg-red-600':'text-gray-600'}`}>Venta</button>
                                             </div>
                                         </div>
-                                        
                                         <div className="space-y-4">
-                                            <div>
-                                                <label className="text-[10px] text-gray-500 uppercase font-black block mb-2">Monto (Bolívares)</label>
-                                                <input type="number" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} className="binance-input w-full p-4 rounded-xl font-mono text-lg" placeholder="0.00" />
+                                            <input type="number" placeholder="Monto Bs" value={order.amount} onChange={e=>setOrder({...order, amount:e.target.value})} className="input-pro mono" />
+                                            <input type="number" placeholder="Tasa" value={order.rate} onChange={e=>setOrder({...order, rate:e.target.value})} className="input-pro mono" />
+                                            <div className="bg-black/20 p-4 rounded-xl text-center border border-gray-800">
+                                                <span className="text-[10px] text-gray-500 font-black block mb-1">TOTAL A RECIBIR</span>
+                                                <span className="text-xl font-black text-yellow-500 mono">{(parseFloat(order.amount||0)/parseFloat(order.rate||1)).toFixed(2)} USDT</span>
                                             </div>
-                                            <div>
-                                                <label className="text-[10px] text-gray-500 uppercase font-black block mb-2">Tasa de Cambio</label>
-                                                <input type="number" value={form.rate} onChange={e => setForm({...form, rate: e.target.value})} className="binance-input w-full p-4 rounded-xl font-mono text-lg" placeholder="0.00" />
-                                            </div>
-                                            
-                                            <div className="bg-black/40 p-4 rounded-xl border border-gray-800 flex justify-between items-center">
-                                                <span className="text-[10px] font-bold text-gray-500 uppercase italic">Recibes aprox:</span>
-                                                <span className="text-xl font-black text-yellow-500 font-mono">
-                                                    {(parseFloat(form.amount || 0) / parseFloat(form.rate || 1)).toFixed(2)} USDT
-                                                </span>
-                                            </div>
-
-                                            <button onClick={handleTransaction} className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition shadow-lg ${form.type === 'buy' ? 'bg-green-600 hover:bg-green-500 shadow-green-900/20' : 'bg-red-600 hover:bg-red-500 shadow-red-900/20'}`}>
-                                                Confirmar {form.type === 'buy' ? 'Compra' : 'Venta'}
-                                            </button>
+                                            <button onClick={handleExecute} className={`w-full py-4 rounded-xl font-black uppercase text-xs tracking-widest ${order.side==='buy'?'btn-buy':'btn-sell'}`}>Confirmar {order.side}</button>
                                         </div>
                                     </div>
 
-                                    <div className="glass p-6 rounded-2xl border border-gray-800 space-y-6">
-                                        <h2 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><IconChart /> Estadísticas</h2>
-                                        
+                                    <div className="card-pro p-8 space-y-6">
+                                        <h3 className="font-black text-xs uppercase tracking-widest">Distribución de Capital</h3>
                                         <div className="space-y-4">
-                                            <div className="flex justify-between items-end border-b border-gray-800 pb-2">
-                                                <span className="text-[10px] text-gray-500 font-bold uppercase">Volumen Total</span>
-                                                <span className="font-bold text-white uppercase">{stats.totalVol.toLocaleString()} <span className="text-[10px] text-gray-600 italic">Bs</span></span>
-                                            </div>
-                                            <div className="flex justify-between items-end border-b border-gray-800 pb-2">
-                                                <span className="text-[10px] text-gray-500 font-bold uppercase">Órdenes Procesadas</span>
-                                                <span className="font-bold text-white italic">{stats.count}</span>
-                                            </div>
-                                            <div className="flex justify-between items-end border-b border-gray-800 pb-2">
-                                                <span className="text-[10px] text-gray-500 font-bold uppercase">Status de Red</span>
-                                                <span className="text-[10px] text-green-500 font-black animate-pulse uppercase">Sincronizado</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gray-800/20 p-4 rounded-xl border border-dashed border-gray-700">
-                                            <p className="text-[9px] text-gray-500 text-center uppercase font-bold leading-relaxed">
-                                                Los datos se guardan automáticamente en la nube de Firebase y se sincronizan en tiempo real con otros dispositivos.
-                                            </p>
+                                            {store.partners.map(p => {
+                                                const share = (p.initialCapital / (totalPartnerCapital || 1)) * 100;
+                                                const currentWorth = (share / 100) * currentTotalValue;
+                                                return (
+                                                    <div key={p.id} className="border-b border-gray-800 pb-3">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-xs font-bold text-white">{p.name}</span>
+                                                            <span className="text-[10px] font-black text-yellow-500 mono">{share.toFixed(1)}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                                            <div className="bg-yellow-500 h-full" style={{width: `${share}%`}}></div>
+                                                        </div>
+                                                        <div className="flex justify-between mt-2">
+                                                            <span className="text-[9px] text-gray-500 font-black uppercase">Capital Actual</span>
+                                                            <span className="text-[10px] text-white font-black mono">{currentWorth.toLocaleString()} Bs</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {store.partners.length === 0 && <p className="text-center text-gray-600 text-xs italic py-4">Sin socios registrados</p>}
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Panel Derecho: Lista rápida */}
-                            <div className="lg:col-span-4 space-y-6">
-                                <div className="glass rounded-2xl border border-gray-800 overflow-hidden h-full flex flex-col">
-                                    <div className="p-4 bg-[#2b3139] border-b border-gray-800 flex justify-between items-center">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Actividad Reciente</span>
-                                        <IconHistory />
+                            <div className="lg:col-span-4 card-pro flex flex-col h-[600px]">
+                                <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+                                    <h3 className="text-xs font-black uppercase tracking-widest">Actividad</h3>
+                                    <Icons.Swap />
+                                </div>
+                                <div className="flex-1 overflow-y-auto divide-y divide-gray-800/30">
+                                    {store.history.map(h => (
+                                        <div key={h.id} className="p-4 hover:bg-white/5 transition">
+                                            <div className="flex justify-between text-[10px] mb-1">
+                                                <span className={`font-black uppercase ${h.side==='buy'?'text-green-500':'text-red-500'}`}>{h.side}</span>
+                                                <span className="text-gray-600 mono">{new Date(h.timestamp).toLocaleTimeString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-bold text-white text-sm">{h.amount.toLocaleString()} Bs</span>
+                                                <span className="text-yellow-500 font-black mono">{h.usdt.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {view === 'partners' && (
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 animate-in fade-in duration-500">
+                            <div className="md:col-span-4">
+                                <div className="card-pro p-8 sticky top-8">
+                                    <h3 className="font-black text-xs uppercase tracking-widest mb-6 text-yellow-500">Añadir Nuevo Socio</h3>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="stat-label">Nombre del Socio</label>
+                                            <input type="text" value={newPartner.name} onChange={e=>setNewPartner({...newPartner, name:e.target.value})} className="input-pro" placeholder="Ej: Juan Pérez" />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="stat-label">Aporte Inicial (Bs)</label>
+                                            <input type="number" value={newPartner.capital} onChange={e=>setNewPartner({...newPartner, capital:e.target.value})} className="input-pro mono" placeholder="0.00" />
+                                        </div>
+                                        <button onClick={addPartner} className="w-full bg-yellow-500 text-black py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-yellow-400 transition flex items-center justify-center gap-2">
+                                            <Icons.Plus /> Registrar Socio
+                                        </button>
+                                        <p className="text-[9px] text-gray-500 font-bold uppercase text-center mt-4">
+                                            El capital aportado se suma automáticamente al saldo en banco de la terminal.
+                                        </p>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto max-h-[600px] divide-y divide-gray-800">
-                                        {data.history.length === 0 ? (
-                                            <div className="p-10 text-center text-gray-600 italic text-xs uppercase">Sin actividad registrada</div>
-                                        ) : (
-                                            data.history.map(item => (
-                                                <div key={item.id} className="p-4 hover:bg-white/5 transition border-l-4 border-transparent hover:border-yellow-500">
-                                                    <div className="flex justify-between mb-1">
-                                                        <span className={`text-[10px] font-black uppercase ${item.type === 'buy' ? 'text-green-500' : 'text-red-500'}`}>
-                                                            {item.type === 'buy' ? 'Compra' : 'Venta'}
-                                                        </span>
-                                                        <span className="text-[10px] font-mono text-gray-600">
-                                                            {new Date(item.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex justify-between items-baseline">
-                                                        <span className="text-sm font-black text-white">{item.amount.toLocaleString()} Bs</span>
-                                                        <span className="text-xs text-yellow-500 font-bold">{item.usdt.toFixed(2)} USDT</span>
-                                                    </div>
-                                                    <p className="text-[9px] text-gray-600 mt-1 uppercase font-bold">Tasa: {item.rate}</p>
-                                                </div>
-                                            ))
-                                        )}
+                                </div>
+                            </div>
+                            <div className="md:col-span-8">
+                                <div className="card-pro overflow-hidden">
+                                    <div className="p-6 border-b border-gray-800 bg-white/5">
+                                        <h2 className="font-black text-xs uppercase tracking-widest">Lista de Socios y Participación</h2>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left table-pro">
+                                            <thead>
+                                                <tr>
+                                                    <th>Socio</th>
+                                                    <th className="text-right">Aporte Inicial</th>
+                                                    <th className="text-right">Participación %</th>
+                                                    <th className="text-right">Equivalente Actual</th>
+                                                    <th className="text-center">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="text-xs">
+                                                {store.partners.map(p => {
+                                                    const share = (p.initialCapital / (totalPartnerCapital || 1)) * 100;
+                                                    const currentWorth = (share / 100) * currentTotalValue;
+                                                    return (
+                                                        <tr key={p.id} className="hover:bg-white/5 transition">
+                                                            <td className="font-bold text-white uppercase">{p.name}</td>
+                                                            <td className="text-right mono">{p.initialCapital.toLocaleString()} Bs</td>
+                                                            <td className="text-right text-yellow-500 font-black mono">{share.toFixed(2)}%</td>
+                                                            <td className="text-right font-black text-white mono">{currentWorth.toLocaleString()} Bs</td>
+                                                            <td className="text-center">
+                                                                <button onClick={()=>deletePartner(p.id)} className="text-red-500 p-2 hover:bg-red-500/10 rounded-lg transition">Eliminar</button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {store.partners.length === 0 && (
+                                                    <tr><td colSpan="5" className="text-center p-12 text-gray-600 font-bold uppercase italic">No hay socios registrados en el sistema</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="p-6 bg-black/40 border-t border-gray-800 flex justify-between items-center">
+                                        <span className="stat-label">Capital Social Total</span>
+                                        <span className="text-xl font-black text-white mono">{totalPartnerCapital.toLocaleString()} Bs</span>
                                     </div>
                                 </div>
                             </div>
@@ -264,257 +379,34 @@
                     )}
 
                     {view === 'history' && (
-                        <div className="glass rounded-2xl border border-gray-800 overflow-hidden shadow-2xl animate-in fade-in duration-500">
-                            <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-                                <h2 className="font-black uppercase tracking-widest text-sm">Libro de Órdenes Completo</h2>
-                                <button onClick={async () => {
-                                    if(confirm("¿Seguro que quieres limpiar todo el historial?")) {
-                                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'appState', 'main'), {...data, history: []});
-                                    }
-                                }} className="text-[10px] text-red-500 hover:underline uppercase font-bold">Limpiar Todo</button>
+                        <div className="card-pro overflow-hidden animate-in slide-in-from-bottom-5 duration-500">
+                            <div className="p-6 bg-white/5 border-b border-gray-800 flex justify-between items-center">
+                                <h2 className="font-black uppercase tracking-widest text-sm">Libro de Operaciones</h2>
+                                <button onClick={()=>updateCloud({...store, history: []})} className="text-[10px] text-red-500 font-black uppercase hover:underline">Limpiar</button>
                             </div>
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-black/40 text-[10px] uppercase font-black text-gray-500">
+                                <table className="w-full text-left table-pro">
+                                    <thead>
                                         <tr>
-                                            <th className="p-4">Fecha/Hora</th>
-                                            <th className="p-4">Tipo</th>
-                                            <th className="p-4 text-right">Bolívares</th>
-                                            <th className="p-4 text-right">Tasa</th>
-                                            <th className="p-4 text-right">USDT</th>
-                                            <th className="p-4">Método</th>
+                                            <th>Fecha</th>
+                                            <th>Tipo</th>
+                                            <th className="text-right">Monto Bs</th>
+                                            <th className="text-right">Tasa</th>
+                                            <th className="text-right">USDT</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-800 text-xs">
-                                        {data.history.map(item => (
-                                            <tr key={item.id} className="hover:bg-white/5 transition">
-                                                <td className="p-4 text-gray-400 font-mono">{new Date(item.date).toLocaleString()}</td>
-                                                <td className="p-4">
-                                                    <span className={`px-2 py-1 rounded text-[9px] font-bold uppercase ${item.type === 'buy' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
-                                                        {item.type}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-right font-bold">{item.amount.toLocaleString()}</td>
-                                                <td className="p-4 text-right text-gray-400 font-mono">{item.rate}</td>
-                                                <td className="p-4 text-right text-yellow-500 font-black font-mono">{item.usdt.toFixed(2)}</td>
-                                                <td className="p-4 text-gray-500 uppercase font-bold text-[10px]">{item.method}</td>
+                                    <tbody className="text-xs mono">
+                                        {store.history.map(h => (
+                                            <tr key={h.id} className="hover:bg-white/5">
+                                                <td className="text-gray-500">{new Date(h.timestamp).toLocaleString()}</td>
+                                                <td><span className={`font-black uppercase ${h.side==='buy'?'text-green-500':'text-red-500'}`}>{h.side}</span></td>
+                                                <td className="text-right font-black text-white">{h.amount.toLocaleString()}</td>
+                                                <td className="text-right text-gray-400">{h.rate}</td>
+                                                <td className="text-right text-yellow-500 font-black">{h.usdt.toFixed(2)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>        const db = getFirestore(app);
-        const appId = "p2p-master-live-v1";
-
-        // Iconos SVG
-        const IconTrending = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>;
-        const IconRefresh = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><polyline points="21 3 21 8 16 8"></polyline></svg>;
-        const IconPlus = ({ size = 16 }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>;
-
-        function App() {
-            const [user, setUser] = React.useState(null);
-            const [loading, setLoading] = React.useState(true);
-            const [view, setView] = React.useState('dashboard');
-            const [state, setState] = React.useState({
-                inv: { usdt: 0, fiat_usd: 0, rates: { usd: 45.50 } },
-                history: []
-            });
-            const [auditLogs, setAuditLogs] = React.useState([]);
-            const [currentMode, setCurrentMode] = React.useState('buy');
-            const [form, setForm] = React.useState({ method: 'Pago Móvil', ref: '', amount: '', rate: '' });
-
-            React.useEffect(() => {
-                const unsubAuth = onAuthStateChanged(auth, (u) => {
-                    if (!u) {
-                        signInAnonymously(auth).catch(err => console.error("Auth Error:", err));
-                    } else {
-                        setUser(u);
-                        setLoading(false);
-                    }
-                });
-                return () => unsubAuth();
-            }, []);
-
-            React.useEffect(() => {
-                if (!user) return;
-                const stateRef = doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'main');
-                const auditColRef = collection(db, 'artifacts', appId, 'public', 'data', 'auditLogs');
-
-                const unsubState = onSnapshot(stateRef, (snap) => {
-                    if (snap.exists()) setState(snap.data());
-                    else setDoc(stateRef, state);
-                }, (err) => console.error("Firestore State Error:", err));
-
-                const unsubAudit = onSnapshot(auditColRef, (snap) => {
-                    const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    setAuditLogs(logs.sort((a, b) => b.timestamp - a.timestamp).slice(0, 50));
-                }, (err) => console.error("Firestore Audit Error:", err));
-
-                return () => { unsubState(); unsubAudit(); };
-            }, [user]);
-
-            const executeOrder = async () => {
-                const amount = parseFloat(form.amount);
-                const rate = parseFloat(form.rate);
-                if (!amount || !rate) return;
-
-                const usdt = amount / rate;
-                const newOrder = {
-                    id: Date.now(),
-                    date: new Date().toLocaleString(),
-                    type: currentMode,
-                    method: form.method,
-                    ref: form.ref || '---',
-                    local: amount,
-                    rate,
-                    usdt
-                };
-
-                const newState = {
-                    ...state,
-                    inv: {
-                        ...state.inv,
-                        usdt: state.inv.usdt + (currentMode === 'buy' ? usdt : -usdt),
-                        fiat_usd: state.inv.fiat_usd + (currentMode === 'buy' ? -(amount / 45) : (amount / 45))
-                    },
-                    history: [newOrder, ...state.history].slice(0, 50)
-                };
-
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'globalState', 'main'), newState);
-                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'auditLogs'), {
-                        action: `ORDEN ${currentMode.toUpperCase()}`,
-                        details: `${usdt.toFixed(2)} USDT @ ${rate}`,
-                        timestamp: Date.now(),
-                        userId: user.uid
-                    });
-                    setForm({ ...form, amount: '', ref: '' });
-                } catch (e) {
-                    console.error("Error al guardar:", e);
-                }
-            };
-
-            if (loading) return (
-                <div className="flex flex-col items-center justify-center h-screen text-white">
-                    <IconRefresh className="animate-spin text-yellow-500 mb-4" />
-                    <p className="font-bold uppercase tracking-widest text-xs">Conectando con la Nube...</p>
-                </div>
-            );
-
-            return (
-                <div className="min-h-screen text-gray-200 p-4 font-sans max-w-6xl mx-auto">
-                    <nav className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
-                        <div className="flex items-center gap-2">
-                            <IconTrending />
-                            <span className="font-bold text-xl uppercase tracking-tighter">P2P Master <span className="text-yellow-500">Cloud</span></span>
-                        </div>
-                        <div className="flex gap-4">
-                            <button onClick={() => setView('dashboard')} className={`text-xs font-bold uppercase transition ${view === 'dashboard' ? 'text-yellow-500' : 'hover:text-white'}`}>Panel</button>
-                            <button onClick={() => setView('audit')} className={`text-xs font-bold uppercase transition ${view === 'audit' ? 'text-yellow-500' : 'hover:text-white'}`}>Auditoría</button>
-                        </div>
-                    </nav>
-
-                    {view === 'dashboard' ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-2 space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-[#1e2329] p-6 rounded-xl border border-gray-800">
-                                        <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo Bancos (Est.)</p>
-                                        <p className="text-2xl font-bold">${state.inv.fiat_usd.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                                    </div>
-                                    <div className="bg-[#1e2329] p-6 rounded-xl border border-gray-800">
-                                        <p className="text-[10px] text-gray-500 uppercase font-bold">Saldo USDT</p>
-                                        <p className="text-2xl font-bold text-green-500">{state.inv.usdt.toFixed(2)}</p>
-                                    </div>
-                                </div>
-                                
-                                <div className="bg-[#1e2329] rounded-xl border border-gray-800 overflow-hidden">
-                                    <div className="p-3 bg-[#2b3139] text-[10px] font-bold uppercase text-gray-400">Últimos Movimientos</div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left text-xs">
-                                            <thead>
-                                                <tr className="text-gray-500 border-b border-gray-800 font-bold">
-                                                    <th className="p-3">Operación</th>
-                                                    <th className="p-3 text-right">Monto Bs</th>
-                                                    <th className="p-3 text-right">USDT</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {state.history.length === 0 ? (
-                                                    <tr><td colSpan="3" className="p-10 text-center text-gray-600 italic">No hay registros</td></tr>
-                                                ) : (
-                                                    state.history.map(h => (
-                                                        <tr key={h.id} className="border-t border-gray-800 hover:bg-gray-800/30 transition">
-                                                            <td className="p-3">
-                                                                <span className={h.type === 'buy' ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>{h.type.toUpperCase()}</span>
-                                                                <span className="block text-[10px] text-gray-500">{h.method}</span>
-                                                            </td>
-                                                            <td className="p-3 text-right font-mono">{h.local.toLocaleString()}</td>
-                                                            <td className="p-3 text-right font-bold text-yellow-500 font-mono">{h.usdt.toFixed(2)}</td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-6">
-                                <div className="bg-[#1e2329] p-6 rounded-xl border border-gray-800 shadow-xl">
-                                    <h3 className="text-sm font-bold uppercase mb-4 flex items-center gap-2"><IconPlus /> Nueva Orden</h3>
-                                    <div className="flex bg-black p-1 rounded-lg mb-4">
-                                        <button onClick={() => setCurrentMode('buy')} className={`flex-1 py-2 text-[10px] font-bold rounded transition ${currentMode === 'buy' ? 'bg-green-600 text-white' : 'text-gray-500'}`}>COMPRA</button>
-                                        <button onClick={() => setCurrentMode('sell')} className={`flex-1 py-2 text-[10px] font-bold rounded transition ${currentMode === 'sell' ? 'bg-red-600 text-white' : 'text-gray-500'}`}>VENTA</button>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] text-gray-500 uppercase font-bold ml-1">Monto en Bolívares</label>
-                                            <input type="number" className="w-full bg-gray-800 p-3 rounded border border-gray-700 outline-none focus:border-yellow-500 text-sm font-mono text-white" value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0.00" />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] text-gray-500 uppercase font-bold ml-1">Tasa de Cambio</label>
-                                            <input type="number" className="w-full bg-gray-800 p-3 rounded border border-gray-700 outline-none focus:border-yellow-500 text-sm font-mono text-white" value={form.rate} onChange={e => setForm({...form, rate: e.target.value})} placeholder="0.00" />
-                                        </div>
-                                        <button onClick={executeOrder} className="w-full bg-yellow-500 text-black py-4 rounded font-black uppercase text-xs hover:bg-yellow-400 transition active:scale-95 shadow-lg shadow-yellow-500/10">Procesar Orden</button>
-                                    </div>
-                                </div>
-                                <div className="bg-[#1e2329] p-4 rounded-xl border border-gray-800">
-                                    <p className="text-[10px] text-gray-500 uppercase font-bold mb-2">Terminal Cloud ID</p>
-                                    <p className="text-[9px] font-mono text-gray-400 break-all bg-black/30 p-2 rounded">{user ? user.uid : '---'}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="bg-[#1e2329] rounded-xl border border-gray-800 overflow-hidden shadow-2xl">
-                            <div className="p-4 bg-[#2b3139] border-b border-gray-800 font-bold uppercase text-xs">Registros de Actividad</div>
-                            <div className="divide-y divide-gray-800">
-                                {auditLogs.length === 0 ? (
-                                    <div className="p-10 text-center text-gray-600 uppercase text-[10px] font-bold">No hay logs disponibles</div>
-                                ) : (
-                                    auditLogs.map(log => (
-                                        <div key={log.id} className="p-4 flex justify-between items-center text-xs hover:bg-gray-800/20 transition">
-                                            <div>
-                                                <p className="font-bold text-yellow-500 tracking-wider uppercase text-[10px]">{log.action}</p>
-                                                <p className="text-gray-400 mt-1">{log.details}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="text-[10px] text-gray-500 block font-bold">{new Date(log.timestamp).toLocaleDateString()}</span>
-                                                <span className="text-[10px] text-gray-600 block font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
                             </div>
                         </div>
                     )}
